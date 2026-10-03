@@ -5,7 +5,6 @@
   - pixiJS
   - tailwind CSS
   - zustand
-  - 
 
 - このテンプレートは下記のセットアップを行うことで再現できる
   - 1. インストール
@@ -52,7 +51,7 @@
   - 3. shadcnの初期化
     ```
     npx shadcn@latest init
-    npx shadcn@latest add button
+    npx shadcn@latest add button select
     ```
 
 # React + TypeScript + Vite

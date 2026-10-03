@@ -1,137 +1,132 @@
 import { useEffect, useRef } from "react";
-import { Application, extend, useApplication } from "@pixi/react";
-import { Graphics, Container } from "pixi.js";
 
-import { useGameStore, type Unit, type UnitType } from "@/store/gameStore";
-
-extend({
-  Graphics,
-  Container,
-});
+import { sceneState, type ArrowKey } from "@/SceneState";
+import { useGameStore } from "@/store/gameStore";
+import { Application } from "pixi.js";
 
 export function GameCanvas() {
+  /**
+   * GameCanvasは一度のみrenderされる（シーンが変わっても再実行されない）
+   */
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const keysRef = useRef(new Set<ArrowKey>());
+  const setScene = useGameStore((state) => state.setSceneId);
+  const app = useGameStore((state) => {
+    return state.app;
+  });
+  const setApp = useGameStore((state) => {
+    return state.setApp;
+  });
 
-  return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden">
-      <Application resizeTo={containerRef} background={0x20252b} antialias>
-        <World />
-      </Application>
-    </div>
-  );
-}
-
-export function World() {
-  const { app } = useApplication();
-  const worldRef = useRef<Container>(null);
-  const units = useGameStore((state) => state.units);
+  console.log("render GameCanvas");
 
   useEffect(() => {
-    const updatePosition = () => {
-      if (!worldRef.current) {
-        return;
+    /**
+     * appの初期化
+     */
+    if (!containerRef.current) {
+      return;
+    }
+    if (app) {
+      return;
+    }
+    const _app = new Application();
+
+    (async () => {
+      await _app.init({
+        resizeTo: containerRef.current!,
+      });
+
+      containerRef.current!.appendChild(_app.canvas);
+      setApp(_app);
+    })();
+  }, [containerRef.current]);
+
+  useEffect(() => {
+    if (!app) {
+      return;
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.type == "wheel") {
+        sceneState.handleWheel(app, event.deltaY);
       }
-      worldRef.current.x = app.screen.width / 2 - (MAP_WIDTH / 2) * TILE_SIZE;
-      worldRef.current.y = app.screen.height / 2 - (MAP_HEIGHT / 2) * TILE_SIZE;
+      event.preventDefault();
     };
 
-    updatePosition();
-
-    app.renderer.on("resize", updatePosition);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
+      ) {
+        // sceneState.handleArrowKey(app, event.key as ArrowKey, keys);
+        keysRef.current.add(event.key as ArrowKey);
+        event.preventDefault();
+      }
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
+      ) {
+        keysRef.current.delete(event.key as ArrowKey);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
-      app.renderer.off("resize", updatePosition);
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [app]);
+
+  useEffect(() => {
+    if (!app) {
+      return;
+    }
+    setScene("scene1");
+
+    app.stage.addChild(sceneState.cameraContainer);
+
+    app.ticker.add((ticker) => {
+      const dt = ticker.deltaMS / 1000;
+      const gamepad = navigator.getGamepads()[0];
+      if (gamepad) {
+        sceneState.handleGamePad(
+          app,
+          {
+            l_stick_x: gamepad.axes[0],
+            l_stick_y: gamepad.axes[1],
+            btn_b: gamepad.buttons[0].pressed,
+            btn_a: gamepad.buttons[1].pressed,
+            btn_y: gamepad.buttons[2].pressed,
+            btn_x: gamepad.buttons[3].pressed,
+          },
+          dt,
+        );
+      } else {
+        sceneState.handleArrowKey(app, keysRef.current, dt);
+      }
+      sceneState.applyPhysicsToAllUnits(dt);
+    });
+
+    function update() {
+      sceneState.redrawAll();
+      sceneState.updateCameraPosition(
+        app!.renderer.screen.width,
+        app!.renderer.screen.height,
+      );
+    }
+    app.renderer.on("resize", update);
+    return () => {
+      app.stage.removeChild(sceneState.cameraContainer);
+      app.renderer.off("resize", update);
     };
   }, [app]);
 
   return (
-    <pixiContainer ref={worldRef}>
-      <Grid />
-      {units.map((unit) => (
-        <UnitView unit={unit} />
-      ))}
-    </pixiContainer>
-  );
-}
-
-const TILE_SIZE = 50;
-const MAP_WIDTH = 5;
-const MAP_HEIGHT = 5;
-export function Grid() {
-  return (
-    <pixiGraphics
-      draw={(graphics) => {
-        graphics.clear();
-
-        for (let x = 0; x <= MAP_WIDTH; x++) {
-          graphics.moveTo(x * TILE_SIZE, 0);
-          graphics.lineTo(x * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
-        }
-
-        for (let y = 0; y <= MAP_HEIGHT; y++) {
-          graphics.moveTo(0, y * TILE_SIZE);
-          graphics.lineTo(MAP_WIDTH * TILE_SIZE, y * TILE_SIZE);
-        }
-
-        graphics.stroke({
-          width: 1,
-          color: 0x666666,
-        });
-      }}
-    />
-  );
-}
-
-type UnitProp = {
-  unit: Unit;
-};
-
-const drawer: Record<UnitType, (g: Graphics) => void> = {
-  robot: (graphics) => {
-    graphics.clear();
-
-    graphics.rect(
-      -TILE_SIZE * 0.4,
-      -TILE_SIZE * 0.4,
-      TILE_SIZE * 0.8,
-      TILE_SIZE * 0.8,
-    );
-    graphics.fill(0x4ade80);
-
-    graphics.circle(-TILE_SIZE * 0.14, -TILE_SIZE * 0.1, TILE_SIZE * 0.1);
-    graphics.circle(TILE_SIZE * 0.14, -TILE_SIZE * 0.1, TILE_SIZE * 0.1);
-    graphics.rect(
-      -TILE_SIZE * 0.2,
-      TILE_SIZE * 0.2,
-      TILE_SIZE * 0.4,
-      TILE_SIZE * 0.1,
-    );
-    graphics.fill(0x111111);
-  },
-  apple: (graphics) => {
-    graphics.clear();
-
-    graphics.circle(0, TILE_SIZE*0.1, TILE_SIZE * 0.3);
-    graphics.fill(0xff0000);
-
-    graphics.rect(
-      -TILE_SIZE * 0.05,
-      -TILE_SIZE * 0.4,
-      TILE_SIZE * 0.1,
-      TILE_SIZE * 0.3,
-    );
-    graphics.fill(0x00aa00);
-  },
-};
-
-function UnitView(prop: UnitProp) {
-  const position = prop.unit.position;
-
-  return (
-    <pixiGraphics
-      x={(position.x + 0.5) * TILE_SIZE}
-      y={(position.y + 0.5) * TILE_SIZE}
-      draw={drawer[prop.unit.type]}
-    />
+    <div ref={containerRef} className="h-full w-full overflow-hidden"></div>
   );
 }

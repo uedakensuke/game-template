@@ -1,47 +1,53 @@
-import { useGameStore } from "@/store/gameStore"
+import { Button } from "@/components/ui/button";
 
-const STEP = 1
+import { sceneState } from "@/SceneState";
+import { useGameStore } from "@/store/gameStore";
 
 export function GameControl() {
-  const moveUnit = useGameStore((state) => state.moveUnit)
-
-  const move = (dx: number, dy: number) => {
-    moveUnit("ロボット", dx, dy)
+  const app = useGameStore((state) => {
+    return state.app;
+  });
+  if (!app) {
+    return <div>loading</div>;
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2">
-      <div />
+    <div>
+      <div className="grid grid-cols-3 gap-2">
+        <div />
+        <Button
+          tabIndex={-1}
+          onClick={() =>
+            sceneState.handleArrowKey(app, new Set(["ArrowUp"]))
+          }
+        >
+          ↑
+        </Button>
+        <div />
 
-      <button
-        type="button"
-        onClick={() => move(0, -STEP)}
-      >
-        ↑
-      </button>
+        <Button
+          tabIndex={-1}
+          onClick={() => sceneState.handleArrowKey(app, new Set(["ArrowLeft"]))}
+        >
+          ←
+        </Button>
+        <div />
+        <Button
+          tabIndex={-1}
+          onClick={() => sceneState.handleArrowKey(app, new Set(["ArrowRight"]))}
+        >
+          →
+        </Button>
 
-      <div />
-
-      <button
-        type="button"
-        onClick={() => move(-STEP, 0)}
-      >
-        ←
-      </button>
-
-      <button
-        type="button"
-        onClick={() => move(0, STEP)}
-      >
-        ↓
-      </button>
-
-      <button
-        type="button"
-        onClick={() => move(STEP, 0)}
-      >
-        →
-      </button>
+        <div />
+        <Button
+          tabIndex={-1}
+          onClick={() => sceneState.handleArrowKey(app, new Set(["ArrowDown"]))}
+        >
+          ↓
+        </Button>
+        <div />
+      </div>
     </div>
-  )
+  );
 }
