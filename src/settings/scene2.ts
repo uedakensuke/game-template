@@ -7,9 +7,10 @@ const MAX_X_ACCEL_PER_SEC = 5;
 const JUMP_SPEED = 7;
 
 export const scene2: SceneSetting = {
+  throttle_ratio: 1,
   gravity: 9.0,
   max_v: { x: JUMP_SPEED / 2, y: JUMP_SPEED },
-  limit_y: "ground",
+  limit_y: "collid",
   initialSelectedUnitId: "ロボット",
   unitSettings: {
     ロボット: {
@@ -18,8 +19,8 @@ export const scene2: SceneSetting = {
         y: 0,
       },
       draw: drawers["robot"],
-      collid: "stop",
-      collidRatio: 0.8,
+      overlap: "collid",
+      physicalSize: 0.8,
     },
     りんご: {
       initialPosition: {
@@ -27,8 +28,8 @@ export const scene2: SceneSetting = {
         y: 0,
       },
       draw: drawers["apple"],
-      collid: "take",
-      collidRatio: 0.8,
+      overlap: "take",
+      physicalSize: 0.8,
     },
   },
   fixedObjectSettings: {
@@ -38,7 +39,7 @@ export const scene2: SceneSetting = {
         y: 4,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック1: {
       initialPosition: {
@@ -46,7 +47,7 @@ export const scene2: SceneSetting = {
         y: 4,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック2: {
       initialPosition: {
@@ -54,7 +55,7 @@ export const scene2: SceneSetting = {
         y: 3,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック3: {
       initialPosition: {
@@ -62,7 +63,7 @@ export const scene2: SceneSetting = {
         y: 2,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック4: {
       initialPosition: {
@@ -70,7 +71,7 @@ export const scene2: SceneSetting = {
         y: 3,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック5: {
       initialPosition: {
@@ -78,7 +79,7 @@ export const scene2: SceneSetting = {
         y: 4,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック6: {
       initialPosition: {
@@ -86,7 +87,7 @@ export const scene2: SceneSetting = {
         y: 2,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック7: {
       initialPosition: {
@@ -94,7 +95,7 @@ export const scene2: SceneSetting = {
         y: 1,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
     ブロック8: {
       initialPosition: {
@@ -102,18 +103,74 @@ export const scene2: SceneSetting = {
         y: 0,
       },
       draw: drawers["block"],
-      collid: "stop",
+      overlap: "collid",
     },
-  },
-  initialFocus: {
-    x: 12,
-    y: 2,
+    雲1: {
+      initialPosition: {
+        x: 11,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲2: {
+      initialPosition: {
+        x: 12,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲3: {
+      initialPosition: {
+        x: 13,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲4: {
+      initialPosition: {
+        x: 14,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲5: {
+      initialPosition: {
+        x: 15,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲6: {
+      initialPosition: {
+        x: 17,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
+    雲7: {
+      initialPosition: {
+        x: 19,
+        y: 3,
+      },
+      draw: drawers["cloud"],
+      overlap: "collid_from_upper",
+    },
   },
   mapSize: {
     w: 25,
     h: 5,
   },
   handleGamePad(app: Application, pad: GamePad, dt?: number) {
+    const unit = sceneState.getActiveUnit();
+    if (unit === undefined) {
+      return;
+    }
     const step = dt ? MAX_X_ACCEL_PER_SEC * dt : 1;
 
     sceneState
@@ -121,19 +178,23 @@ export const scene2: SceneSetting = {
       .setMaxSpeedRatio(pad.btn_y ? 2.0 : 1.0, undefined);
 
     if (Math.abs(pad.l_stick_x) > 0.1) {
-      if (sceneState.checkUnitOnGround()) {
+      if (unit.checkNearGround()) {
         const speed_mul = pad.btn_y ? 2 : 1;
-        sceneState.getActiveUnit().accel(pad.l_stick_x * step * speed_mul, 0);
+        unit.accel(pad.l_stick_x * step * speed_mul, 0);
       } else {
-        sceneState.getActiveUnit().accel(pad.l_stick_x * step * 0.5, 0);
+        unit.accel(pad.l_stick_x * step * 0.5, 0);
       }
     }
-    if (pad.btn_b && sceneState.checkUnitOnGround()) {
+    if (pad.btn_b && unit.checkNearGround() && unit.v.y == 0) {
       console.log("jump", dt);
-      sceneState.getActiveUnit().setSpeed(undefined, -JUMP_SPEED);
+      unit.setSpeed(undefined, -JUMP_SPEED);
     }
   },
   handleArrowKey(app: Application, keys: Set<ArrowKey>, dt?: number) {
+    const unit = sceneState.getActiveUnit();
+    if (unit === undefined) {
+      return;
+    }
     const step = dt ? MAX_X_ACCEL_PER_SEC * dt : 1;
 
     let val = 0;
@@ -142,13 +203,13 @@ export const scene2: SceneSetting = {
     } else if (keys.has("ArrowLeft")) {
       val = -1;
     }
-    if (sceneState.checkUnitOnGround()) {
-      sceneState.getActiveUnit().accel(val * step, 0);
+    if (unit.checkNearGround()) {
+      unit.accel(val * step, 0);
     } else {
-      sceneState.getActiveUnit().accel(val * step * 0.5, 0);
+      unit.accel(val * step * 0.5, 0);
     }
-    if (keys.has("ArrowUp") && sceneState.checkUnitOnGround()) {
-      sceneState.getActiveUnit().setSpeed(undefined, -JUMP_SPEED);
+    if (keys.has("ArrowUp") && unit.checkNearGround() && unit.v.y == 0) {
+      unit.setSpeed(undefined, -JUMP_SPEED);
     }
   },
   handleWheel(app: Application, deltaY: number) {

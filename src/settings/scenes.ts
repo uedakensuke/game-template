@@ -7,3 +7,4 @@ export const scenes: Record<string, SceneSetting> = {
   scene2: scene2,
 };
 
+export const defaultScene="scene2"

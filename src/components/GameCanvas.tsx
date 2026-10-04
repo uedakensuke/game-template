@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
+import { Application } from "pixi.js";
 
 import { sceneState, type ArrowKey } from "@/SceneState";
 import { useGameStore } from "@/store/gameStore";
-import { Application } from "pixi.js";
+import { defaultScene } from "@/settings/scenes";
 
 export function GameCanvas() {
   /**
@@ -53,6 +54,7 @@ export function GameCanvas() {
         sceneState.handleWheel(app, event.deltaY);
       }
       event.preventDefault();
+      event.stopPropagation();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -62,6 +64,7 @@ export function GameCanvas() {
         // sceneState.handleArrowKey(app, event.key as ArrowKey, keys);
         keysRef.current.add(event.key as ArrowKey);
         event.preventDefault();
+        event.stopPropagation();
       }
     };
     const handleKeyUp = (event: KeyboardEvent) => {
@@ -69,11 +72,15 @@ export function GameCanvas() {
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
       ) {
         keysRef.current.delete(event.key as ArrowKey);
+        event.stopPropagation();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    window.addEventListener("keyup", handleKeyUp, { capture: true });
+    window.addEventListener("wheel", handleWheel, {
+      passive: false,
+      capture: true,
+    });
 
     return () => {
       window.removeEventListener("wheel", handleWheel);
@@ -86,12 +93,12 @@ export function GameCanvas() {
     if (!app) {
       return;
     }
-    setScene("scene1");
+    setScene(defaultScene);
 
     app.stage.addChild(sceneState.cameraContainer);
 
     app.ticker.add((ticker) => {
-      const dt = ticker.deltaMS / 1000;
+      const dt = (ticker.deltaMS / 1000) * sceneState.throttle_ratio;
       const gamepad = navigator.getGamepads()[0];
       if (gamepad) {
         sceneState.handleGamePad(
@@ -110,6 +117,7 @@ export function GameCanvas() {
         sceneState.handleArrowKey(app, keysRef.current, dt);
       }
       sceneState.applyPhysicsToAllUnits(dt);
+      sceneState.setFocusXToActiveUnit(app)
     });
 
     function update() {

@@ -56,6 +56,17 @@ export const drawers: Record<
       tileSize * 0.8,
     );
     graphics.fill(0xaa4400);
+  },
+  cloud: (graphics, tileSize) => {
+    graphics.clear();
 
+    graphics.circle(tileSize * -0.2, tileSize * -0.2, tileSize * 0.3);
+    graphics.fill(0xeeeeee);
+    graphics.circle(tileSize * -0.2, tileSize * 0.2, tileSize * 0.3);
+    graphics.fill(0xeeeeee);
+    graphics.circle(tileSize * 0.2, tileSize * -0.2, tileSize * 0.3);
+    graphics.fill(0xeeeeee);
+    graphics.circle(tileSize * 0.2, tileSize * 0.2, tileSize * 0.3);
+    graphics.fill(0xeeeeee);
   },
 };

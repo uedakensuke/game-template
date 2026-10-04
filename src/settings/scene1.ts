@@ -4,9 +4,8 @@ import { sceneState } from "@/SceneState";
 import type { Application } from "pixi.js";
 
 export const scene1: SceneSetting = {
-  gravity:0.0,
   max_v: { x: 5.0, y: 5.0 },
-  limit_y:"ground",
+  limit_y: "collid",
   initialSelectedUnitId: "ロボット",
   unitSettings: {
     ロボット: {
@@ -15,7 +14,7 @@ export const scene1: SceneSetting = {
         y: 0,
       },
       draw: drawers["robot"],
-      collid: "stop",
+      overlap: "collid",
     },
     りんご: {
       initialPosition: {
@@ -23,16 +22,10 @@ export const scene1: SceneSetting = {
         y: 2,
       },
       draw: drawers["apple"],
-      collid: "take",
+      overlap: "take",
     },
   },
-  fixedObjectSettings:{
-
-  },
-  initialFocus: {
-    x: 3,
-    y: 3,
-  },
+  fixedObjectSettings: {},
   mapSize: {
     w: 7,
     h: 7,
@@ -43,40 +36,46 @@ export const scene1: SceneSetting = {
 
     if (Math.abs(pad.l_stick_x) > 0.1 || Math.abs(pad.l_stick_y) > 0.1) {
       const speed_mul = pad.btn_y ? 2 : 1;
-      sceneState.getActiveUnit().move(
-        pad.l_stick_x * step * speed_mul,
-        pad.l_stick_y * step * speed_mul,
-      );
+      sceneState
+        .getActiveUnit()
+        .move(
+          pad.l_stick_x * step * speed_mul,
+          pad.l_stick_y * step * speed_mul,
+        );
     }
   },
   handleArrowKey(app: Application, keys: Set<ArrowKey>, dt?: number) {
+    const unit = sceneState.getActiveUnit();
+    if(unit===undefined){
+      return
+    }
     const MAX_MOVE_PER_SEC = 2;
     const step = dt ? MAX_MOVE_PER_SEC * dt : 1;
 
     if (keys.size == 2) {
       if (keys.has("ArrowUp") && keys.has("ArrowRight")) {
-        sceneState.getActiveUnit().move(step / 1.414, -step / 1.414);
+        unit.move(step / 1.414, -step / 1.414);
       } else if (keys.has("ArrowUp") && keys.has("ArrowLeft")) {
-        sceneState.getActiveUnit().move(-step / 1.414, -step / 1.414);
+        unit.move(-step / 1.414, -step / 1.414);
       } else if (keys.has("ArrowDown") && keys.has("ArrowRight")) {
-        sceneState.getActiveUnit().move(step / 1.414, step / 1.414);
+        unit.move(step / 1.414, step / 1.414);
       } else if (keys.has("ArrowDown") && keys.has("ArrowLeft")) {
-        sceneState.getActiveUnit().move(-step / 1.414, step / 1.414);
+        unit.move(-step / 1.414, step / 1.414);
       }
     } else if (keys.size == 1) {
       const key = keys.keys().next().value;
       switch (key) {
         case "ArrowUp":
-          sceneState.getActiveUnit().move(0, -step);
+          unit.move(0, -step);
           break;
         case "ArrowDown":
-          sceneState.getActiveUnit().move(0, step);
+          unit.move(0, step);
           break;
         case "ArrowLeft":
-          sceneState.getActiveUnit().move(-step, 0);
+          unit.move(-step, 0);
           break;
         case "ArrowRight":
-          sceneState.getActiveUnit().move(step, 0);
+          unit.move(step, 0);
           break;
       }
     }
